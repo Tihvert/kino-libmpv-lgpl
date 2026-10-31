@@ -21,8 +21,20 @@ jobs:
           sudo apt-get install --no-install-recommends -y gcc-mingw-w64-x86-64 g++-mingw-w64-x86-64 nasm ninja-build pkgconf cmake
           pipx install meson==1.7.0
 
+      - uses: actions/cache/restore@v4
+        with:
+          path: work
+          key: deps-${{ hashFiles('versions.env') }}
+
       - name: Build
         run: ./build.sh
+
+      - uses: actions/cache/save@v4
+        if: always() && hashFiles('work/.deps-done') != ''
+        continue-on-error: true
+        with:
+          path: work
+          key: deps-${{ hashFiles('versions.env') }}
 
       - name: Check it's an LGPL build
         run: python3 verify.py dist

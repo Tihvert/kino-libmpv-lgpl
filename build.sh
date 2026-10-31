@@ -137,6 +137,10 @@ fetch "$ZLIB_URL" "$ZLIB_SHA256"
 fetch "$ICONV_URL" "$ICONV_SHA256"
 endgroup
 
+# Everything mpv depends on takes about 45 minutes. The workflow caches work/ once this part is done, so a change to
+# mpv's own options doesn't build it all again.
+if [ ! -f "$root/work/.deps-done" ]; then
+
 group "libiconv"
 builddir "$src/libiconv-1.18"
 ../configure --host="$TARGET" --prefix=/ $shared
@@ -248,6 +252,10 @@ meson setup .. --cross-file "$prefix/crossfile" --prefix=/ -Dtest=disabled -Dfon
 install_build
 endgroup
 
+find "$src" -type d -name builddir -prune -exec rm -rf {} +
+touch "$root/work/.deps-done"
+fi
+
 # LGPL (-Dgpl=false), libmpv only. See the top of this file for what is in and why.
 mpv_args=(
     -Dgpl=false -Dlibmpv=true -Dcplayer=false -Dbuild-date=false -Dtests=false
@@ -261,7 +269,7 @@ mpv_args=(
 group "mpv"
 cd "$src/mpv"
 rm -rf builddir
-CFLAGS="$CFLAGS -I$prefix/include" LDFLAGS="$LDFLAGS -L$prefix/lib" \
+CFLAGS="$CFLAGS -I$prefix/include" CXXFLAGS="-O2 -pipe -I$prefix/include" LDFLAGS="$LDFLAGS -L$prefix/lib" \
     meson setup builddir --cross-file "$prefix/crossfile" --prefix=/ "${mpv_args[@]}"
 meson compile -C builddir
 DESTDIR="$prefix" meson install -C builddir
